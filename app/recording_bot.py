@@ -1,7 +1,8 @@
-import discord
+from discord.ext import commands
 
-class RecordingService(discord.Client):
-    def __init__(self):
+class RecordingService(commands.Bot):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.is_recording = False
         self.channel = None 
         print("Recording is ready")

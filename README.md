@@ -18,13 +18,15 @@ interesting phrases in the most active channel.
 
 ## Usage
 
-1. **Build the Docker Image:** Open a terminal in the directory containing your
-   Dockerfile and run the following command to build your Docker image. Replace
-   "your-bot-name" with whatever you want to name your Docker image: 
+1. **Build the Docker image:** Docker Compose will automatically build your
+   Docker image if it doesn't exist or if the Dockerfile has changed. You can
+   also manually build the Docker image with the docker-compose build command:
    ```cmd
-   docker build -t your-bot-name .
+   docker-compose build
    ```
-1. **Run the Docker Container:** Run your bot with the following command: 
-    ```cmd
-    docker run -d your-bot-name
-    ```
+1. **Run the Docker container:** To run your Docker container, you can use the
+   docker-compose up command:
+   ```
+   docker-compose up
+   ```
+
