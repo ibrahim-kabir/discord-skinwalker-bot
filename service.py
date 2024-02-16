@@ -1,7 +1,6 @@
-import wave
-import os
+import discord
 
-class RecordingService:
+class RecordingService(discord.Client):
     def __init__(self):
         self.is_recording = False
         self.channel = None 
