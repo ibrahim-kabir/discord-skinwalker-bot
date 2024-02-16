@@ -4,15 +4,18 @@ import os
 class RecordingService:
     def __init__(self):
         self.is_recording = False
-        self.channel_id = None 
+        self.channel = None 
         print("Recording is ready")
         # ...
 
     def start_recording(self, channel):
+        self.channel = channel 
+        self.is_recording = True
         print("start recording")
         # ...
 
     def stop_recording(self):
+        self.is_recording = False
         print("stop recording")
         # ...
 
