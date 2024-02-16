@@ -1,8 +1,6 @@
-import discord
 from discord.ext import commands, tasks
-from dotenv import load_dotenv
 import os
-from service import RecordingService
+from app.recording_bot import RecordingService
 import json
 import random
 from discord import FFmpegPCMAudio
@@ -73,20 +71,3 @@ class SkinWalker(commands.Bot):
         print(os.path.isdir(self.sentences_path + mp3_file), self.sentences_path + mp3_file)
         connection.play(FFmpegPCMAudio(self.sentences_path + mp3_file))
         await self.disconnect()
-
-if __name__ == "__main__":
-    load_dotenv()
-    skinwalker_token = os.environ.get("SKINWALKER_TOKEN")
-    recording_service_token = os.environ.get("RECORDING_SERVICE_TOKEN")
-    sentences_path = os.environ.get("SENTENCES_DIRECTORY_PATH")
-
-    intents = discord.Intents.default()
-    intents.message_content = True
-    
-    recording_service = RecordingService()
-    recording_service.run(recording_service_token)
-
-    skinwalker_client = SkinWalker(recording_service, sentences_path, command_prefix='/', intents=intents, self_bot=False)
-    skinwalker_client.run(skinwalker_token)
-
-
