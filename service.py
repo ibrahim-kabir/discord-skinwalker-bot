@@ -48,6 +48,5 @@ async def stop_record(ctx):
         await ctx.send("I'm not recording in this guild.")
 
 if __name__ == "__main__":
-    #token = "MTIwODIxMDIyNzUxNDg0MzE3Ng.Gr_-Sg.YS5qUHGlpXhnwzcdKxdWl4Psatn2VExGv2pqog"
-    token = "MTIwODE4MDU2ODMxNjA1NTYyMg.GLAbrp.LIhV4h_X0JcAAL_ppFNdW-PRar6VA0Yh51eBUU"
+    token = os.environ.get("RECORDING_SERVICE_TOKEN")
     bot.start(token)
