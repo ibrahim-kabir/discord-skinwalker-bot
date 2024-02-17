@@ -18,13 +18,17 @@ class RecordingService(interactions.Client):
     @slash_command(name="record", description="Joins a channel and starts recording")
     async def start_recording(self, ctx):
         print("start recording")
-        #self.channel = channel
+        self.channel = os.environ.get("CHANNEL_ID")
+        
         if ctx.guild.id not in voice_connections:
             # Connect to the voice channel
-            voice_state = await ctx.author.voice.channel.connect()
-            voice_connections[ctx.guild.id] = voice_state
-        else:
-            await ctx.send("Already recording in this guild.")
+            voice_channel = ctx.guild.get_channel(self.channel)
+            if voice_channel:
+                # Connect to the voice channel
+                voice_state = await voice_channel.connect()
+                voice_connections[ctx.guild_id] = voice_state
+            else:
+                await ctx.send("Already recording in this guild.")
 
         # Start recording
         await voice_connections[ctx.guild.id].start_recording()
@@ -74,18 +78,7 @@ class RecordingService(interactions.Client):
                 audio = AudioSegment.from_mp3(file_path)
 
         self.delete_old_recordings()
-
-        # Trouver les indices de début et de fin de chaque segment de silence
-        #silence_ranges = silence.detect_silence(audio, min_silence_len=1000, silence_thresh=-35)
-        audio_trimmed = audio.strip_silence()
-
-        # Split the trimmed audio segment into sub-segments of 10 seconds or less
-        max_segment_duration = 10 * 1000  # 10 seconds in milliseconds
-        segments = []
-        for i in range(0, len(audio_trimmed), max_segment_duration):
-            segment = audio_trimmed[i:i + max_segment_duration]
-            segments.append(segment)
-        """
+        silence_ranges = silence.detect_silence(audio, min_silence_len=1000, silence_thresh=-35)
         # Diviser le fichier audio en segments de silence
         segments = []
         for start, end in silence_ranges:
@@ -97,7 +90,6 @@ class RecordingService(interactions.Client):
                 sub_segment = segment[i:i+max_segment_duration]
                 sub_segments.append(sub_segment)
             segments.extend(sub_segments)
-        """
         # Sauvegarder chaque segment en tant que fichier audio
         output_directory = os.path.join(SAVE_DIRECTORY)
         os.makedirs(output_directory, exist_ok=True)
@@ -105,6 +97,20 @@ class RecordingService(interactions.Client):
             output_file = os.path.join(output_directory, f"{i}.mp3")
             segment.export(output_file, format="mp3")
         print("making sentences done")
+
+        """
+        # Trouver les indices de début et de fin de chaque segment de silence
+        
+        audio_trimmed = audio.strip_silence()
+
+        # Split the trimmed audio segment into sub-segments of 10 seconds or less
+        max_segment_duration = 10 * 1000  # 10 seconds in milliseconds
+        segments = []
+        for i in range(0, len(audio_trimmed), max_segment_duration):
+            segment = audio_trimmed[i:i + max_segment_duration]
+            segments.append(segment)
+        """
+        
     
     def delete_old_recordings(self):
         print("delete old recordings")
