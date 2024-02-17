@@ -1,44 +1,46 @@
-from discord.ext import commands, tasks
+from discord.ext import tasks
 import os
-from app.recording_bot import RecordingService
+from recording_bot import RecordingService
 import json
 import random
 from discord import FFmpegPCMAudio
+import discord
+from discord import app_commands
 
-class SkinWalker(commands.Bot):
-    def __init__(self, recording_service: RecordingService, sentences_path: str, *args, **kwargs):
+class SkinWalker(discord.Client):
+    def __init__(self, guild_id, recording_service: RecordingService, recording_path: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.recording_service = recording_service
-        self.sentences_path = sentences_path
+        self.recording_path = recording_path
+        self.guide_id = guild_id
+        self.tree = app_commands.CommandTree(self)
         self.load_settings()
-        self.add_commands()
-
-    def add_commands(self):
-        @self.command(name="status", pass_context=True)
-        async def status(ctx):
-            print(ctx)
-            await ctx.channel.send("Up and running!")
         
-        @self.command(name="set_appearance_frequency", pass_context=True)
-        async def set_appearance_frequency(ctx, frequency: int):
+        @self.tree.command(name="status",description="Check if the bot is up and running.", guild=discord.Object(id=self.guide_id))
+        async def status(interaction):
+            await interaction.response.send_message("Up and running!")
+
+        @self.tree.command(name="set_appearance_frequency", description="Set the frequency with which the bot makes appearances in voice channels.", guild=discord.Object(id=self.guide_id))
+        async def set_appearance_frequency(interaction, frequency: int):
             self.appearance_frequency = frequency
-            await ctx.send(f'Appearance frequency has been set to {frequency}')
+            await interaction.response.send_message(f'Appearance frequency has been set to {frequency}')
 
-        @self.command(name="set_min_user", pass_context=True)
-        async def set_min_user(ctx, user: int):
+        @self.tree.command(name="set_min_user", description="Set the minimum number of users required in a voice channel for the bot to join.", guild=discord.Object(id=self.guide_id))
+        async def set_min_user(interaction, user: int):
             self.min_users = user
-            await ctx.send(f'Minimum users have been set to {user}')
+            await interaction.response.send_message(f'Minimum users have been set to {user}')
 
-        @self.command(name="get_settings", pass_context=True)
-        async def get_settings(ctx):
-            await ctx.channel.send(f'Appearance frequency: {self.appearance_frequency}, Minimum users: {self.min_users}')
+        @self.tree.command(name="get_settings", description="View the current settings for the bot.", guild=discord.Object(id=self.guide_id))
+        async def get_settings(interaction):
+            await interaction.response.send_message(f'Appearance frequency: {self.appearance_frequency}, Minimum users: {self.min_users}')
 
-        @self.command(name="leave", help="Makes the bot leave the voice channel.", pass_context=True)
-        async def leave(ctx):
-            if ctx.voice_client is not None:
-                await ctx.voice_client.disconnect()
+        @self.tree.command(name="leave", description="Disconnects the bot from the voice channel it's currently in.", guild=discord.Object(id=self.guide_id))
+        async def leave(interaction):
+            if len(interaction.client.voice_clients) > 0:
+                print(interaction.client.voice_clients)    
+                await interaction.client.voice_clients.disconnect()
             else:
-                await ctx.send("I'm not connected to a voice channel.")   
+                await interaction.response.send_message("I'm not connected to a voice channel.")   
         
     def load_settings(self):
         with open('settings.json', 'r') as file:
@@ -48,26 +50,29 @@ class SkinWalker(commands.Bot):
 
     async def on_ready(self):
         print('Bot is ready!')
-        self.join_channel_randomly.start()
+        await self.tree.sync(guild=discord.Object(self.guide_id))
 
     async def on_voice_state_update(self, member, before, after):
         if before.channel != after.channel:
             if after.channel is not None and len(after.channel.members) >= 2:
                 self.recording_service.start_recording(after.channel)
+                self.join_channel_randomly.start()
             elif before.channel is not None and len(before.channel.members) < 2:
                 self.recording_service.stop_recording()
+                self.join_channel_randomly.stop()
 
     @tasks.loop(minutes=1)
     async def join_channel_randomly(self):
+        print("I'm trying to join a channel !")
         if self.recording_service.is_recording and random.random() < (100 / self.appearance_frequency):
             channel = self.recording_service.channel
             await self.play_random_mp3(channel)
 
     async def play_random_mp3(self, channel):
-        mp3_files = [f for f in os.listdir(self.sentences_path) if f.endswith('.mp3')]
+        mp3_files = [f for f in os.listdir(self.recording_path) if f.endswith('.mp3')]
         mp3_file = random.choice(mp3_files)
         print(mp3_file)
         connection = await channel.connect()
-        print(os.path.isdir(self.sentences_path + mp3_file), self.sentences_path + mp3_file)
-        connection.play(FFmpegPCMAudio(self.sentences_path + mp3_file))
+        print(os.path.isdir(self.recording_path + mp3_file), self.recording_path + mp3_file)
+        connection.play(FFmpegPCMAudio(self.recording_path + mp3_file))
         await self.disconnect()
