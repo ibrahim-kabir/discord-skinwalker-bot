@@ -1,0 +1,4 @@
+{
+    "appearance_frequency": 100,  // probability to spawn each minute
+    "min_users": 2
+}
