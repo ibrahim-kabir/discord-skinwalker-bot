@@ -121,13 +121,6 @@ class RecordingService(interactions.Client):
         # Message de confirmation
         print(f"Tous les fichiers MP3 ont été supprimés du dossier '{SAVE_DIRECTORY}'.")
 
-
-if __name__ == "__main__":
-    bot = RecordingService()
-    token = os.environ.get("RECORDING_SERVICE_TOKEN")
-    
-    bot.start(token)
-    #bot.start_recording()
     
 
 

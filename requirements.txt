@@ -3,3 +3,4 @@ datetime
 python-dotenv
 pynacl
 interactions.py
+pydub

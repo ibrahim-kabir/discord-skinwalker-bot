@@ -21,7 +21,7 @@ def start_skinwalker():
     skinwalker_client.run(skinwalker_token)
 
 if __name__ == "__main__":
-    recording_service = RecordingService(intents=intents)
+    recording_service = RecordingService()
     skinwalker_client = SkinWalker(guild_id, recording_service, sentences_path,  intents=intents)
     thread_recording = threading.Thread(target=start_recording_service)
     thread_skinwalker = threading.Thread(target=start_skinwalker)
