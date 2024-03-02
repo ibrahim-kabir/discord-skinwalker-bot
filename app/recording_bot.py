@@ -79,15 +79,28 @@ class RecordingService(interactions.Client):
                 audio = AudioSegment.from_mp3(file_path)
 
                 # Detect silence ranges in the audio
-                silence_ranges = silence.detect_silence(audio, min_silence_len=500, silence_thresh=-35)
+                silence_ranges = silence.detect_silence(audio, min_silence_len=1000, silence_thresh=-30)
 
-                # Diviser le fichier audio en segments de silence
+                # Create segments between silences
                 segments = []
-                for start, end in silence_ranges:
-                    segment = audio[start:end]
-                    max_segment_duration = 10 * 1000  # 10 secondes en millisecondes
-                    sub_segments = [segment[i:i+max_segment_duration] for i in range(0, len(segment), max_segment_duration)]
-                    segments.extend(sub_segments)
+                for i, (start, end) in enumerate(silence_ranges):
+                    # Calculate the end point for the segment (start of the next silence - 500 milliseconds)
+                    if i < len(silence_ranges) - 1:
+                        next_start = silence_ranges[i+1][0]
+                        segment_end = min(next_start + 700, len(audio))
+                    else:
+                        # If it's the last silence, end the segment at the end of the audio
+                        segment_end = len(audio)
+                    
+                    # Calculate the start point for the segment (end of the current silence - 500 milliseconds)
+                    segment_start = max(end - 700, 0)
+                    
+                    # Create a segment from the calculated start point to the calculated end point
+                    segment = audio[segment_start:segment_end]
+
+                    # Check if the segment is less than 10 seconds or than 1.5 second
+                    if len(segment) < 10000 or len(segment) < 1500:
+                        segments.append(segment)
 
                 # Save each segment as an audio file
                 output_directory = os.path.join(SAVE_DIRECTORY)
