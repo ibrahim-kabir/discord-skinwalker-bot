@@ -1,6 +1,6 @@
-from discord.ext import commands
+import interactions
 
-class RecordingService(commands.Bot):
+class RecordingService(interactions.Client):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.is_recording = False

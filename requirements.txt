@@ -1,4 +1,5 @@
-discord
+discord-py-interactions
 datetime
 python-dotenv
 pynacl
+pydub
