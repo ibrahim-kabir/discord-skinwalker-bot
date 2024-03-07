@@ -5,15 +5,17 @@ from interactions import slash_command
 from dotenv import load_dotenv
 from pydub import AudioSegment, silence
 
-voice_connections = {}
-SAVE_DIRECTORY = "recording/"
-load_dotenv()
+
+
 
 class RecordingService(interactions.Client):
-    def __init__(self):
+    def __init__(self, recording_path: str):
         super().__init__()
+        self.recording_path = recording_path
         self.is_recording = False
-        self.channel = None 
+        self.channel = None
+        self.voice_connections = {}
+        load_dotenv()
         print("Recording is ready")
 
     @slash_command(name="record", description="Joins a channel and starts recording")
@@ -21,18 +23,18 @@ class RecordingService(interactions.Client):
         print("start recording")
         self.channel = os.environ.get("CHANNEL_ID")
         
-        if ctx.guild.id not in voice_connections:
+        if ctx.guild.id not in self.voice_connections:
             # Connect to the voice channel
             voice_channel = ctx.guild.get_channel(self.channel)
             if voice_channel:
                 # Connect to the voice channel
                 voice_state = await voice_channel.connect()
-                voice_connections[ctx.guild_id] = voice_state
+                self.voice_connections[ctx.guild_id] = voice_state
             else:
                 await ctx.send("Already recording in this guild.")
 
         # Start recording
-        await voice_connections[ctx.guild.id].start_recording()
+        await self.voice_connections[ctx.guild.id].start_recording()
         #await ctx.send("Starting recording!")
         self.is_recording = True
         
@@ -41,16 +43,16 @@ class RecordingService(interactions.Client):
     @slash_command(name="stoprecord", description="Stops recording and disconnects")
     async def stop_recording(self, ctx):
         print("stop recording")
-        if ctx.guild.id in voice_connections:
+        if ctx.guild.id in self.voice_connections:
             # Stop recording
-            await voice_connections[ctx.guild.id].stop_recording()
+            await self.voice_connections[ctx.guild.id].stop_recording()
             self.is_recording = False
-            #await ctx.send(files=[interactions.File(file, file_name=f"{user_id}.mp3") for user_id, file in voice_connections[ctx.guild.id].recorder.output.items()])
-            print([interactions.File(file, file_name=f"{user_id}.mp3") for user_id, file in voice_connections[ctx.guild.id].recorder.output.items()])
+            #await ctx.send(files=[interactions.File(file, file_name=f"{user_id}.mp3") for user_id, file in self.voice_connections[ctx.guild.id].recorder.output.items()])
+            print([interactions.File(file, file_name=f"{user_id}.mp3") for user_id, file in self.voice_connections[ctx.guild.id].recorder.output.items()])
             self.save_audio(ctx)
             # Disconnect from the voice channel
-            await voice_connections[ctx.guild.id].disconnect()
-            del voice_connections[ctx.guild.id]
+            await self.voice_connections[ctx.guild.id].disconnect()
+            del self.voice_connections[ctx.guild.id]
             
             print("Recording stopped. I left the voice channel.")
             #await ctx.send("Stopped recording. Be ware of the Skinwalker...")
@@ -62,9 +64,9 @@ class RecordingService(interactions.Client):
     def save_audio(self, ctx):
         print("save audio")
         
-        for user_id, audio_data in voice_connections[ctx.guild.id].recorder.output.items():
+        for user_id, audio_data in self.voice_connections[ctx.guild.id].recorder.output.items():
             file_name = f"{user_id}.mp3"
-            file_path = os.path.join(SAVE_DIRECTORY, file_name)
+            file_path = os.path.join(self.recording_path, file_name)
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
             with open(file_path, "wb") as file:
                 file.write(audio_data.read())
@@ -72,10 +74,10 @@ class RecordingService(interactions.Client):
     def make_sentences(self):
         print("Making sentences")
 
-        # Process each audio file in the SAVE_DIRECTORY
-        for file_name in os.listdir(SAVE_DIRECTORY):
+        # Process each audio file in the self.recording_path
+        for file_name in os.listdir(self.recording_path):
             if file_name.endswith(".mp3") and not "_" in file_name:
-                file_path = os.path.join(SAVE_DIRECTORY, file_name)
+                file_path = os.path.join(self.recording_path, file_name)
                 audio = AudioSegment.from_mp3(file_path)
 
                 # Detect silence ranges in the audio
@@ -103,7 +105,7 @@ class RecordingService(interactions.Client):
                         segments.append(segment)
 
                 # Save each segment as an audio file
-                output_directory = os.path.join(SAVE_DIRECTORY)
+                output_directory = os.path.join(self.recording_path)
                 os.makedirs(output_directory, exist_ok=True)
 
                 # Get current date and time with milliseconds
@@ -122,19 +124,19 @@ class RecordingService(interactions.Client):
     def delete_long_recordings(self):
         print("Deleting long recordings...")
         
-        # Get a list of all files in the SAVE_DIRECTORY
-        files = os.listdir(SAVE_DIRECTORY)
+        # Get a list of all files in the self.recording_path
+        files = os.listdir(self.recording_path)
 
         # Iterate through the files
         for file_name in files:
             # Check if the file is an MP3 file and doesn't contain the word "Sentence" in its name
             if file_name.endswith(".mp3") and "_" not in file_name:
                 # Delete the file
-                os.remove(os.path.join(SAVE_DIRECTORY, file_name))
+                os.remove(os.path.join(self.recording_path, file_name))
                 print(f"Deleted {file_name}")
 
         # Print confirmation message
-        print(f"Tous les fichiers créé par le bot RecordingService MP3 ont été supprimés du dossier '{SAVE_DIRECTORY}'.")
+        print(f"Tous les fichiers créé par le bot RecordingService MP3 ont été supprimés du dossier '{self.recording_path}'.")
 
     # Deletes all sentences that are 1 hour old or more
     def delete_old_sentences(self):
@@ -143,9 +145,9 @@ class RecordingService(interactions.Client):
         # Get the current time
         current_time = time.time()
 
-        # Iterate through all files in the SAVE_DIRECTORY
-        for filename in os.listdir(SAVE_DIRECTORY):
-            filepath = os.path.join(SAVE_DIRECTORY, filename)
+        # Iterate through all files in the self.recording_path
+        for filename in os.listdir(self.recording_path):
+            filepath = os.path.join(self.recording_path, filename)
             if os.path.isfile(filepath) and filepath.endswith('.mp3'):
                 # Get the modification time of the file
                 file_modified_time = os.path.getmtime(filepath)
