@@ -11,12 +11,11 @@ import asyncio
 from pydub import AudioSegment
 
 class SkinWalker(interactions.Client):
-    def __init__(self, guild_id, recording_service: RecordingService, recording_path: str, *args, **kwargs):
+    def __init__(self, recording_service: RecordingService, recording_path: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.recording_service = recording_service
         self.recording_path = recording_path
-        self.guide_id = guild_id
-        self.enable = True
+        self.enable_state = True
         self.load_settings()
 
     @slash_command(name="status",description="Check if the bot is up and running.")
@@ -59,11 +58,11 @@ class SkinWalker(interactions.Client):
             elif event.before.channel is not None and len(event.before.channel.members) < self.min_users:
                 self.disable()
 
-    def enable(self, channel):
-        self.enable = True
+    def enable(self):
+        self.enable_state = True
         
     def disable(self):
-        self.enable = False
+        self.enable_state = False
         self.recording_service.stop_recording()
         self.join_channel_randomly.stop()
 

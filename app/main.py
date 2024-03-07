@@ -2,28 +2,14 @@ from dotenv import load_dotenv
 import os
 from recording_bot import RecordingService
 from skinwalker_bot import SkinWalker
-import threading
-
-load_dotenv()
-
-skinwalker_token = os.environ.get("SKINWALKER_TOKEN")
-recording_service_token = os.environ.get("RECORDING_SERVICE_TOKEN")
-sentences_path = os.environ.get("RECORDING_DIRECTORY_PATH")
-guild_id = os.environ.get("GUILD_ID")
-
-def start_recording_service():
-    recording_service.start(recording_service_token)
     
-def start_skinwalker():
-    skinwalker_client.start(skinwalker_token)
-
 if __name__ == "__main__":
+    load_dotenv()
+    skinwalker_token = os.environ.get("SKINWALKER_TOKEN")
+    recording_service_token = os.environ.get("RECORDING_SERVICE_TOKEN")
+    recording_path = os.environ.get("RECORDING_DIRECTORY_PATH")
     recording_service = RecordingService()
-    skinwalker_client = SkinWalker(guild_id, recording_service, sentences_path)
-    thread_recording = threading.Thread(target=start_recording_service)
-    thread_skinwalker = threading.Thread(target=start_skinwalker)
-    thread_recording.start()
-    thread_skinwalker.start()
-    print("Bots are ready!")
-
+    skinwalker_client = SkinWalker(recording_service, recording_path)
+    skinwalker_client.start(skinwalker_token)
+    recording_service.start(recording_service_token)
 

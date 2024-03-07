@@ -1,4 +1,5 @@
 import interactions
+from interactions import slash_command
 
 class RecordingService(interactions.Client):
     def __init__(self, *args, **kwargs):
@@ -7,6 +8,10 @@ class RecordingService(interactions.Client):
         self.channel = None 
         print("Recording is ready")
         # ...
+
+    @slash_command(name="status",description="Check if the bot is up and running.")
+    async def status(self, ctx):
+        await ctx.send("Up and running!")
 
     def start_recording(self, channel):
         self.channel = channel 
