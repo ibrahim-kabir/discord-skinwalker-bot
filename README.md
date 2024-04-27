@@ -29,4 +29,3 @@ interesting phrases in the most active channel.
    ```
    docker-compose up
    ```
-

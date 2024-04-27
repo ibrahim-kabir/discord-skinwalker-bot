@@ -1,129 +1,121 @@
 import os
 import time
 import interactions
-from interactions import slash_command
+from interactions import slash_command, OptionType, SlashContext, GuildVoice, ChannelType, slash_option, Task, IntervalTrigger
 from dotenv import load_dotenv
 from pydub import AudioSegment, silence
-
-
-
 
 class RecordingService(interactions.Client):
     def __init__(self, recording_path: str):
         super().__init__()
         self.recording_path = recording_path
-        self.is_recording = False
-        self.channel = None
-        self.voice_connections = {}
-        load_dotenv()
-        print("Recording is ready")
+        self.ctx_recording = []
 
     @slash_command(name="record", description="Joins a channel and starts recording")
-    async def start_recording(self, ctx):
-        print("start recording")
-        self.channel = os.environ.get("CHANNEL_ID")
-        
-        if ctx.guild.id not in self.voice_connections:
-            # Connect to the voice channel
-            voice_channel = ctx.guild.get_channel(self.channel)
-            if voice_channel:
-                # Connect to the voice channel
-                voice_state = await voice_channel.connect()
-                self.voice_connections[ctx.guild_id] = voice_state
-            else:
-                await ctx.send("Already recording in this guild.")
+    @slash_option(
+        name="channel_option",
+        description="Channel Option",
+        required=True,
+        opt_type=OptionType.CHANNEL,
+        channel_types=[ChannelType.GUILD_VOICE])
+    async def start_recording(self, ctx: SlashContext, channel_option: GuildVoice):
+        await ctx.send("Trying to connect..")
+        await channel_option.connect()
+        await ctx.voice_state.start_recording()
+        await ctx.send("Connected and recording.")
+        self.ctx_recording.append(ctx)
+        self.task_save_audio.start()
 
-        # Start recording
-        await self.voice_connections[ctx.guild.id].start_recording()
-        #await ctx.send("Starting recording!")
-        self.is_recording = True
-        
-    
+    @slash_command(name="stop_recording", description="Stops recording and disconnects")
+    async def stop_recording(self, ctx: SlashContext):
+            if ctx.voice_state is not None:
+                await ctx.send("Trying to disconnect..")
+                await ctx.voice_state.stop_recording()
+                await ctx.voice_state.disconnect()
+                await ctx.send("Disconnected and stopped recording.")
+                self.ctx_recording.remove(ctx) #TODO fix not working
+            else: 
+                await ctx.send("I'm not recording in this discord server.")
 
-    @slash_command(name="stoprecord", description="Stops recording and disconnects")
-    async def stop_recording(self, ctx):
-        print("stop recording")
-        if ctx.guild.id in self.voice_connections:
-            # Stop recording
-            await self.voice_connections[ctx.guild.id].stop_recording()
-            self.is_recording = False
-            #await ctx.send(files=[interactions.File(file, file_name=f"{user_id}.mp3") for user_id, file in self.voice_connections[ctx.guild.id].recorder.output.items()])
-            print([interactions.File(file, file_name=f"{user_id}.mp3") for user_id, file in self.voice_connections[ctx.guild.id].recorder.output.items()])
+    @Task.create(IntervalTrigger(minutes=1))
+    async def task_save_audio(self):
+        for ctx in self.ctx_recording:
+            await ctx.voice_state.stop_recording()
             self.save_audio(ctx)
-            # Disconnect from the voice channel
-            await self.voice_connections[ctx.guild.id].disconnect()
-            del self.voice_connections[ctx.guild.id]
-            
-            print("Recording stopped. I left the voice channel.")
-            #await ctx.send("Stopped recording. Be ware of the Skinwalker...")
-            self.make_sentences()
+            self.split_audio_to_sentence()
+            self.delete_long_recordings()
+            self.delete_old_sentences()
+            await ctx.voice_state.start_recording()
 
-        else:
-            await print("I'm not recording in this guild.")
-
-    def save_audio(self, ctx):
-        print("save audio")
-        
-        for user_id, audio_data in self.voice_connections[ctx.guild.id].recorder.output.items():
+    def save_audio(self, ctx: SlashContext):
+        """Save audio data for each user in the voice state recorder.
+        """
+        for user_id, audio_data in ctx.voice_state.recorder.output.items():
             file_name = f"{user_id}.mp3"
             file_path = os.path.join(self.recording_path, file_name)
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
             with open(file_path, "wb") as file:
                 file.write(audio_data.read())
 
-    def make_sentences(self):
-        print("Making sentences")
+    def split_audio_to_sentence(self):
+            """
+            Split the audio files in the recording path into sentences based on silence detection.
 
-        # Process each audio file in the self.recording_path
-        for file_name in os.listdir(self.recording_path):
-            if file_name.endswith(".mp3") and not "_" in file_name:
-                file_path = os.path.join(self.recording_path, file_name)
-                audio = AudioSegment.from_mp3(file_path)
+            This method processes each audio file in the `recording_path` directory. It detects silence ranges in the audio
+            and creates segments between the silences. Segments that are less than 10 seconds or less than 1.5 seconds are
+            saved as separate audio files.
 
-                # Detect silence ranges in the audio
-                silence_ranges = silence.detect_silence(audio, min_silence_len=1000, silence_thresh=-30)
-
-                # Create segments between silences
-                segments = []
-                for i, (start, end) in enumerate(silence_ranges):
-                    # Calculate the end point for the segment (start of the next silence - 500 milliseconds)
-                    if i < len(silence_ranges) - 1:
-                        next_start = silence_ranges[i+1][0]
-                        segment_end = min(next_start + 700, len(audio))
-                    else:
-                        # If it's the last silence, end the segment at the end of the audio
-                        segment_end = len(audio)
-                    
-                    # Calculate the start point for the segment (end of the current silence - 500 milliseconds)
-                    segment_start = max(end - 700, 0)
-                    
-                    # Create a segment from the calculated start point to the calculated end point
-                    segment = audio[segment_start:segment_end]
-
-                    # Check if the segment is less than 10 seconds or than 1.5 second
-                    if len(segment) < 10000 or len(segment) < 1500:
-                        segments.append(segment)
-
-                # Save each segment as an audio file
-                output_directory = os.path.join(self.recording_path)
-                os.makedirs(output_directory, exist_ok=True)
-
-                # Get current date and time with milliseconds
-                current_time = time.strftime("%Y%m%d-%H%M%S-%f")
-                for i, segment in enumerate(segments):
-                    output_file = os.path.join(output_directory, f"{current_time}_{i}.mp3")
-                    segment.export(output_file, format="mp3")
-                    print(f"Saved {current_time}_{i}.mp3")
+            Note: This method assumes that the audio files are in the MP3 format.
+            """
             
-        self.delete_long_recordings()
-        self.delete_old_sentences()
-        print("Making sentences done")
+            # Process each audio file in the self.recording_path
+            for file_name in os.listdir(self.recording_path):
+                if file_name.endswith(".mp3") and "_" not in file_name:
+                    file_path = os.path.join(self.recording_path, file_name)
+                    audio = AudioSegment.from_mp3(file_path)
 
+                    # Detect silence ranges in the audio
+                    silence_ranges = silence.detect_silence(audio, min_silence_len=1000, silence_thresh=-30)
+
+                    # Create segments between silences
+                    segments = []
+                    for i, (start, end) in enumerate(silence_ranges):
+                        # Calculate the end point for the segment (start of the next silence - 500 milliseconds)
+                        if i < len(silence_ranges) - 1:
+                            next_start = silence_ranges[i+1][0]
+                            segment_end = min(next_start + 700, len(audio))
+                        else:
+                            # If it's the last silence, end the segment at the end of the audio
+                            segment_end = len(audio)
+                        
+                        # Calculate the start point for the segment (end of the current silence - 500 milliseconds)
+                        segment_start = max(end - 700, 0)
+                        
+                        # Create a segment from the calculated start point to the calculated end point
+                        segment = audio[segment_start:segment_end]
+
+                        # Check if the segment is less than 10 seconds or than 1.5 second
+                        if len(segment) < 10000 or len(segment) < 1500:
+                            segments.append(segment)
+
+                    # Save each segment as an audio file
+                    output_directory = os.path.join(self.recording_path)
+                    os.makedirs(output_directory, exist_ok=True)
+
+                    # Get current date and time with milliseconds
+                    current_time = time.strftime("%Y%m%d-%H%M%S-%f")
+                    for i, segment in enumerate(segments):
+                        output_file = os.path.join(output_directory, f"{current_time}_{i}.mp3")
+                        segment.export(output_file, format="mp3")
+                        print(f"Saved {current_time}_{i}.mp3")
     
-    # Deletes all the mp3 files generated by the record bot.
     def delete_long_recordings(self):
-        print("Deleting long recordings...")
-        
+        """
+        Deletes all long recordings in the specified recording path.
+
+        This method iterates through all files in the recording path and deletes any MP3 files
+        that do not contain the word "Sentence" in their name.
+        """
         # Get a list of all files in the self.recording_path
         files = os.listdir(self.recording_path)
 
@@ -135,13 +127,13 @@ class RecordingService(interactions.Client):
                 os.remove(os.path.join(self.recording_path, file_name))
                 print(f"Deleted {file_name}")
 
-        # Print confirmation message
-        print(f"Tous les fichiers créé par le bot RecordingService MP3 ont été supprimés du dossier '{self.recording_path}'.")
-
-    # Deletes all sentences that are 1 hour old or more
     def delete_old_sentences(self):
-        print("Deleting old recordings...")
+        """
+        Deletes old recording files that are older than an hour.
 
+        This method iterates through all files in the `self.recording_path` directory and checks if each file is older than an hour.
+        If a file is older than an hour, it is deleted from the directory.
+        """
         # Get the current time
         current_time = time.time()
 
@@ -159,6 +151,9 @@ class RecordingService(interactions.Client):
 
         print("Old recordings deletion completed.")
 
-    
-
-
+if __name__ == "__main__":
+    load_dotenv()
+    recording_service_token = os.environ.get("RECORDING_SERVICE_TOKEN")
+    recording_path = os.environ.get("RECORDING_DIRECTORY_PATH")
+    recording_service = RecordingService(recording_path)
+    recording_service.start(recording_service_token)

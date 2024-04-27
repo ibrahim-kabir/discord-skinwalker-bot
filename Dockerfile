@@ -9,6 +9,7 @@ RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y ffmpeg
 
+RUN apt-get --fix-missing
 # Make port 80 available to the world outside this container
 EXPOSE 80
 
