@@ -10,6 +10,7 @@ class RecordingService(interactions.Client):
         super().__init__()
         self.recording_path = recording_path
         self.ctx_recording = []
+        self.channel_option = None
 
     @slash_command(name="record", description="Joins a channel and starts recording")
     @slash_option(
@@ -19,6 +20,7 @@ class RecordingService(interactions.Client):
         opt_type=OptionType.CHANNEL,
         channel_types=[ChannelType.GUILD_VOICE])
     async def start_recording(self, ctx: SlashContext, channel_option: GuildVoice):
+        self.channel_option = channel_option
         await ctx.send("Trying to connect..")
         await channel_option.connect()
         await ctx.voice_state.start_recording()
@@ -40,6 +42,8 @@ class RecordingService(interactions.Client):
     @Task.create(IntervalTrigger(minutes=1))
     async def task_save_audio(self):
         for ctx in self.ctx_recording:
+            if not ctx.voice_state:
+                await self.channel_option.connect()
             await ctx.voice_state.stop_recording()
             self.save_audio(ctx)
             self.split_audio_to_sentence()
