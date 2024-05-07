@@ -1,3 +1,6 @@
+| :warning:        | This bot is currently in a testing phase and may contain bugs or unexpected behaviors. If you encounter any problems, bugs, or have suggestions for improvement, please report them by creating a new issue on our GitHub page: [Report Bugs Here](https://github.com/ibrahim-kabir/discord-skinwalker-bot/issues).|
+|---------------|:------------------------|
+
 # Voice Detection and Imitation Discord Bot
 
 This Discord bot, called Skinwalker Bot, is designed to add a touch of humor to
