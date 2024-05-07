@@ -2,28 +2,54 @@
 
 This Discord bot, called Skinwalker Bot, is designed to add a touch of humor to
 voice channels by recording user conversations and randomly repeating amusing or
-interesting phrases in the most active channel.
+interesting phrases in the selected voice channel.
 
 ## Functionality Overview
 
-- **Voice Recording**: The bot constantly records audio when users are in voice
-  channels.
-- **Phrase Repetition**: It joins the most active channel and selects sentences
-  said by a random user and repeat it in the active voice channel at random
-  intervals.
+- **Voice Recording**: The bot constantly records audio of users in the voice
+  channel the bot is in.
+- **Phrase Repetition**: It selects sentences less than 10 seconds said by a
+  random user and repeat it in the active voice channel at random intervals.
 
-## Sequence Diagram
+## Prerequisites
 
-![image](https://github.com/ibrahim-kabir/discord-skinwalker-bot/assets/117961703/f4363154-fab4-4930-87f3-2bd6968c241b)
+Before setting up this bot, please ensure you have the following:
+
+- **Hosting Service**: Since this bot is a self-project and not hosted globally,
+  you'll need a hosting service such as a server. Make sure your hosting service
+  has Docker installed.
+
+## Setup
+
+Follow these steps to set up the bot:
+
+1. **Create a Bot on Discord Developer Portal**: Visit the [Discord Developer
+   Portal](https://discord.com/developers/applications) and create a new bot.
+   Give it a name according to your preference.
+
+   ![alt text](ressources/create_app.png)
+
+1. **Create a `.env` File**: Begin by creating a `.env` file and copying the
+   content from the `.env.template` file.
+
+1. **Modify the `.env` File:** Open the `.env` file in a text editor and locate
+   the variable `SKINWALKER_TOKEN`. Replace its value with the token of the bot
+   you just created on the [Discord Developer
+   Portal](https://discord.com/developers/applications). 
+
+1. **Replace `YOUR_BOT_ID` in the URL**: Locate your bot's application ID in the
+   general tab of your bot settings on the [Discord Developer
+   Portal](https://discord.com/developers/applications). Replace `YOUR_BOT_ID`
+   with this application ID in the following URL:
+   `https://discord.com/oauth2/authorize?client_id=YOUR_BOT_ID&permissions=2184183808&scope=bot`
+
+   ![alt text](ressources/app_id.png)
+
+1. **Invite the Bot to Your Servers**: Open the modified URL in a web browser to
+   invite the bot to your servers.
 
 ## Usage
 
-1. **Build the Docker image:** Docker Compose will automatically build your
-   Docker image if it doesn't exist or if the Dockerfile has changed. You can
-   also manually build the Docker image with the docker-compose build command:
-   ```cmd
-   docker-compose build
-   ```
 1. **Run the Docker container:** To run your Docker container, you can use the
    docker-compose up command:
    ```

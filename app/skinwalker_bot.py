@@ -224,6 +224,6 @@ Use `/stop_recording` to stop recording and disconnect.""")
 if __name__ == "__main__":
     load_dotenv()
     skinwalker_token = os.environ.get("SKINWALKER_TOKEN")
-    recording_path = os.environ.get("RECORDING_DIRECTORY_PATH")
+    recording_path = os.environ.get("RECORDING_DIRECTORY_PATH", "./recording/")
     skinwalker_client = SkinWalker(recording_path)
     skinwalker_client.start(skinwalker_token)
